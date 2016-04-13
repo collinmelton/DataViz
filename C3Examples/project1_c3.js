@@ -135,9 +135,10 @@ function getAllData(callback) {
   //}, 1000);
 	//allData = {}
 	//callback();	
-	$.getJSON("savedData.json"), function(data) {
+	$.getJSON("https://rawgit.com/collinmelton/DataViz/master/C3Examples/savedData.json", function(data) {
 		allData = data;
-		}, callback());  
+		callback();
+	}); 
 	//console.log(requests);
 }
 
