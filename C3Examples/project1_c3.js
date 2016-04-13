@@ -2,17 +2,6 @@
  * 
  */
 
-//var inatAPI = "https://api.inaturalist.org/v1/observations/species_counts";
-var inatAPI = "saveddata.json";
-var place_id = "1250";
-var raw_data = {};
-var processed_data = {};
-var data_columns = ["iconic_taxon_id", "iconic_taxon_name", "id", "is_active", "name", "observations_count", "preferred_common_name", "preferred_establishment_means", "rank", "rank_level"];
-var taxalevel = "species";
-var allData = {};
-var months = ["all", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-
 // function to process data into c3 acceptable format
 function processTaxum(taxa, col, addcol, filterCols, filterVals, filterFunctions) {
   var result = [];
@@ -30,9 +19,6 @@ function processTaxum(taxa, col, addcol, filterCols, filterVals, filterFunctions
       if (filterFunction(taxum[filterCol], filterValSet)) {
       	unfiltered = false;      
       } 
-      
-//      if (filterValSet.indexOf(taxum[filterCol])==-1) {
-//}
     }
     if (unfiltered) {
     	result.push(taxum[col]);
@@ -70,6 +56,7 @@ function consolidateData(data) {
   }
 }
 
+// given a number rangeLength return an array from 0 to rangeLength-1
 function range(rangeLength) {
   var result = new Array();
   for (var i=0; i<rangeLength; i++) {
@@ -78,17 +65,7 @@ function range(rangeLength) {
   return result;
 }
 
-function switchFirstColumnNamedLists(data) {
-  console.log(data);
-  var newData = {
-    "names": [data.columns[0][0]],
-    "columns": (range(data.names.length)).map(function(i) {
-      return [data.names[i], data.columns[0][i]];
-    })
-  };
-  return newData;
-}
-
+// inaturalist json data is given as a list of taxa, this function processes these taxa, for each taxum in taxa the one column for column name in data cols is extracted with names determined by the attribute specified in name col. filterCols, filterVals, and filterFunctions are used to filter which of the taxa are included in the final result. consilidate is a boolean to indicate whether to collapse data with the same name
 function processTaxa(taxa, datacols, namecol, consolidate, colsToName, filterCols, filterVals, filterFunctions) {
   var data = {
     "names": processTaxum(taxa, namecol, false, filterCols, filterVals, filterFunctions),
@@ -105,7 +82,18 @@ function processTaxa(taxa, datacols, namecol, consolidate, colsToName, filterCol
   return data;
 }
 
-// get all data
+// some variables for getting data from inaturalist.org
+//var inatAPI = "https://api.inaturalist.org/v1/observations/species_counts";
+var place_id = "1250";
+var raw_data = {};
+var processed_data = {};
+var data_columns = ["iconic_taxon_id", "iconic_taxon_name", "id", "is_active", "name", "observations_count", "preferred_common_name", "preferred_establishment_means", "rank", "rank_level"];
+var taxalevel = "species";
+var allData = {};
+var months = ["all", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// get all data, now getting from saved data on my github
+// commented code was an attempt to get it dynamically from the inaturalist api, I ran into problems due to my inexperience in javascript, I need to rework the code to get the callback to run only after all the api calls are finished
 function getAllData(callback) {
 //	var requests = (range(months.length)).map(function(i) {
 //		var month = i;
@@ -130,18 +118,17 @@ function getAllData(callback) {
   //$.when(x).done(console.log("finished x!"));
   //$.when.apply(this, requests).done(console.log(console.log(allData["April"])));
   //setTimeout(function(){
-    //console.log(allData["April"]);
     //callback();
   //}, 1000);
 	//allData = {}
 	//callback();	
 	$.getJSON("https://rawgit.com/collinmelton/DataViz/master/C3Examples/savedData.json", function(data) {
 		allData = data;
-		callback();
-	}); 
-	//console.log(requests);
+    callback();
+		});  
 }
 
+// a function to return a json object with chart data formatted for c3
 function barChartParameters(data) {
   //console.log(data.columns);
   var chart_data = {
@@ -187,15 +174,13 @@ function barChartParameters(data) {
   return chart_data;
 };
 
-//var my_chart_object = c3.generate(my_chart_parameters);
-
+// some global variables for graphics plotting
 var my_chart_object;
 var all_chart_data;
 var processed_data;
 
+// combine an array of json objects one per month with unformatted chart data where these data now are organized with one column for namem in names where each of these columns has one value for each month
 function rejiggerDataByMonth(names, months, monthlyCounts) {
-	//console.log(monthlyCounts);
-  console.log(names);
   columns = new Array();
   for (i = 0; i<names.length; i++) {
   	columns.push([names[i]]);
@@ -208,7 +193,6 @@ function rejiggerDataByMonth(names, months, monthlyCounts) {
     	columns[i].push(toadd);
     }
   }
-  //console.log(columns);
   return {
   	"names": months,
     "columns": columns
@@ -222,12 +206,11 @@ var slide_0 = function() {
 	var processed_data = processTaxa(allData.all.results, ['count'], "iconic_taxon_name", true, false, [], [[]], []);
 	var my_chart_data = barChartParameters(processed_data);
 	//my_chart_data.axis.x.label = {"text": "Category", "position": "outer-center"};
-	my_chart_data.axis.y.label = {"text": "# of Species Observed", "position": "outer-middle"};
+	my_chart_data.axis.y.label = {"text": "# of Observations", "position": "outer-middle"};
 	my_chart_data["color"] ={"pattern": ['#1f77b4']};
 	my_chart_object = c3.generate(my_chart_data);
 	document.getElementById("message").innerHTML = "An introduction to the observable wildlife in Santa Clara County. A large diversity of wildlife can be seen. Data are courtesy of inaturalist.org";
 };
-
 
 var slide_1 = function() {
   my_chart_object.select(["count"], [1]);
@@ -236,20 +219,16 @@ var slide_1 = function() {
 
 var slide_2 = function() {
   var names = processTaxa(allData.all.results, ['count'], "iconic_taxon_name", true, false, [], [[]], []).names;
-  //months = months.slice(1, months.length);
   processed_data = rejiggerDataByMonth(names, months, months.map(function(month) {
     	return processTaxa(allData[month].results, ["count"], "iconic_taxon_name", true, false, [], [[]], []);
       }));
   all_chart_data = processed_data;
   my_chart_data = barChartParameters(processed_data);
   my_chart_data["color"] ={"pattern": ['#1f77b4']};
-	my_chart_object = c3.generate(my_chart_data);
-	console.log(names.indexOf("Aves"));
-  console.log(names);
+	my_chart_data.axis.y.label = {"text": "# of Observations", "position": "outer-middle"};
+  my_chart_object = c3.generate(my_chart_data);
 	var nonAvesNames = names.slice();
   nonAvesNames.splice(names.indexOf("Aves"), 1).filter(function(x) {return x!=undefined});
-	console.log(nonAvesNames);
-  //console.log(names.indexOf("Aves"));
   my_chart_object.unload({
     ids: nonAvesNames
   });
@@ -274,24 +253,17 @@ function getCategoryCounts(allData, datanames) {
 }
 
 var slide_4 = function() {
-  //var names = processTaxa(allData.all.results, ['count'], "preferred_common_name", false, false, ["iconic_taxon_name", "count"], [["Aves"], 12], [function(val, set) {return (set.indexOf(val)==-1);}, 
-  //function(val, filterval) {return (val>filterval);}]).names;
   var names = processTaxa(allData.all.results, ['count'], "preferred_common_name", false, false, ["iconic_taxon_name"], [["Aves"]], [function(val, set) {return (set.indexOf(val)==-1);}]).names;
-  //months = months.slice(1, months.length);
   processed_data = months.map(function(month) {
   	return processTaxa(allData[month].results, ["count"], "preferred_common_name", 
   			false, false, ["iconic_taxon_name", "preferred_common_name"], [["Aves"], names], 
   			[function(val, set) {return (set.indexOf(val)==-1);}, 
   			 function(val, set) {return (set.indexOf(val)==-1);}]);});
   processed_data = getCategoryCounts(processed_data, months);
-  console.log("before rejiggering");
-  console.log(processed_data);
   processed_data = rejiggerDataByMonth(["counts"], months, processed_data);
   var my_chart_data = barChartParameters(processed_data);
-  //my_chart_data.data.type = "";
   my_chart_data.axis.y.label = {"text": "# of Species Observed", "position": "outer-middle"};
   my_chart_data["color"] ={"pattern": ['#1f77b4']};
-  //console.log(my_chart_data);
   my_chart_object = c3.generate(my_chart_data);
   my_chart_object.select(["counts"], [0,1,2,10,11]);
   document.getElementById("message").innerHTML = "In addition to more sightings, overall more different species are observed in the winter months.";
@@ -332,7 +304,7 @@ var slide_6 = function() {
 		var half = Math.floor(column.length/2);
 		var halfcol = column.slice(0, half);
 		var quartile = math.median(halfcol);
-		if (math.max(column)>4*quartile & (math.max(column)>10)) {//math.min(column)) {
+		if (math.max(column)>4*quartile & (math.max(column)>10)) {
 			return("");
 		} else {
 			return(name[0]);
@@ -378,14 +350,12 @@ var slide_9 = function() {
 	processed_data = rejiggerDataByMonth(names, months, months.map(function(month) {
 	 	return processTaxa(allData[month].results, ["count"], "iconic_taxon_name", true, false, [], [[]], []);
 	}));
-	console.log(processed_data);
 	my_chart_data = barChartParameters(processed_data);
 	my_chart_data.axis.y.label = {"text": "# of Observations", "position": "outer-middle"};
 	my_chart_data["color"] ={"pattern": ['#1f77b4']};
 	my_chart_object = c3.generate(my_chart_data);
 	var nonPlantaeNames = names.slice();
 	nonPlantaeNames.splice(names.indexOf("Plantae"), 1).filter(function(x) {return x!=undefined});
-	console.log(nonPlantaeNames);
 	my_chart_object.unload({
 	  ids: nonPlantaeNames
 	});
@@ -424,7 +394,6 @@ var slide_11 = function() {
 	my_chart_data.data["type"] = "line";
 	my_chart_data.data["colors"] = colors;
 	my_chart_object = c3.generate(my_chart_data);
-	//my_chart_object.data.colors(colors);
 	document.getElementById("message").innerHTML = "We can also look at the observation patterns for individual species and color by the season with the largest number of observations.";
 
 };
@@ -460,7 +429,6 @@ var slides = [slide_0, slide_1, slide_2, slide_3, slide_4, slide_5, slide_6, sli
 var current_slide = 0;
 
 var run = function() {
-	//console.log(allData);
   slides[current_slide]();
   current_slide += 1;
 
